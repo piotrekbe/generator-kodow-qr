@@ -32,8 +32,8 @@ def generate_pdf(label_text, qr_code_data):
     return pdf.output()
 
 # --- Interfejs Aplikacji ---
-st.set_page_config(page_title="Generator QR PDF", page_icon="🖼️")
-st.title("Generator Kodów QR do PDF")
+st.set_page_config(page_title="Generator QR z CSV", page_icon="🖼️")
+st.title("Generator Kodów QR z CSV")
 
 uploaded_file = st.file_uploader("Wybierz plik CSV", type="csv")
 
