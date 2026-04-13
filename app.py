@@ -46,7 +46,7 @@ def generate_pdf(label_text, qr_code_data):
     pdf.set_y(86) 
     
     # Używamy wersji bez polskich znaków dla pełnego bezpieczeństwa przy dużej skali
-    pdf.cell(0, 5, txt="Zeskanuj aplikacje", ln=True, align='C')
+    pdf.cell(0, 5, txt="Zeskanuj aplikację", ln=True, align='C')
     pdf.cell(0, 5, txt="BPme przy realizacji", ln=True, align='C')
     
     return pdf.output()
