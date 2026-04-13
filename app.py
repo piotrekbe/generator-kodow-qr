@@ -8,7 +8,7 @@ import re
 import os
 
 # --- KONFIGURACJA PRO ---
-st.set_page_config(page_title="QR Generator PRO", page_icon="🛡️", layout="centered")
+st.set_page_config(page_title="QR Generator", page_icon="🛡️", layout="centered")
 
 # 1. Naprawa spacji (Logic Enhancement)
 def fix_label_spacing(text):
@@ -51,7 +51,7 @@ def generate_pdf(label_text, qr_code_data, has_fonts):
 
 # --- LOGIKA APLIKACJI ---
 
-st.title("🚀 QR Generator PRO")
+st.title("🚀 QR Generator")
 st.markdown("---")
 
 # Sprawdzenie zasobów
