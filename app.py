@@ -46,7 +46,7 @@ def generate_pdf(label_text, qr_code_data):
 
 # --- Interfejs Streamlit ---
 st.set_page_config(page_title="Generator QR BPme", page_icon="⛽")
-st.title("Generator Kodów QR (Wersja BPme)")
+st.title("Generator Kodów QR")
 
 uploaded_file = st.file_uploader("Wgraj plik CSV", type="csv")
 
