@@ -113,7 +113,8 @@ if uploaded_file is not None:
                 for i, kod in enumerate(current_batch):
                     pdf_content = generate_pdf(label, kod)
                     zf.writestr(f"{kod}.pdf", pdf_content)
-                    if i % 50 == 0:
+                    # POPRAWKA: Pasek aktualizuje się co 50 plików LUB na samym końcu
+                    if i % 50 == 0 or (i + 1) == len(current_batch):
                         progress_bar.progress((i + 1) / len(current_batch))
             
             st.success(f"Paczka {batch_idx + 1} gotowa!")
