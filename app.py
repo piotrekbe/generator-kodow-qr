@@ -7,42 +7,59 @@ import zipfile
 import re
 
 def fix_label_spacing(text):
-    # Funkcja wstawia spację między cyfry a litery (np. 50PLN -> 50 PLN)
+    # Wstawia spację między cyfry a litery (np. 50PLN -> 50 PLN)
     fixed_text = re.sub(r'(\d+)([a-zA-Z]+)', r'\1 \2', text)
     return fixed_text
 
+def clean_polish_chars(text):
+    # Zamiana polskich znaków na odpowiedniki bez ogonków (bezpieczeństwo PDF)
+    chars = {'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ń': 'n', 'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z',
+             'Ą': 'A', 'Ć': 'C', 'Ę': 'E', 'Ł': 'L', 'Ń': 'N', 'Ó': 'O', 'Ś': 'S', 'Ź': 'Z', 'Ż': 'Z'}
+    for pol, lat in chars.items():
+        text = text.replace(pol, lat)
+    return text
+
 def generate_pdf(label_text, qr_code_data):
-    # Powrót do Twoich pierwotnych ustawień PDF 100x100mm
+    # Tworzymy PDF 100x100mm
     pdf = FPDF(unit="mm", format=(100, 100))
+    
+    # KLUCZOWE: Wyłączamy automatyczne tworzenie nowej strony
+    pdf.set_auto_page_break(auto=False, margin=0)
+    
     pdf.add_page()
     
-    # 1. GÓRA: Wartość (50 PLN) - czcionka BOLD 24 (jak w Twojej pierwszej działającej wersji)
+    # 1. GÓRA: Wartość (np. 50 PLN)
     pdf.set_font("Helvetica", "B", 24)
-    pdf.cell(0, 20, txt=label_text, ln=True, align='C')
+    pdf.set_y(10) # Odstęp od samej góry
+    pdf.cell(0, 10, txt=label_text, ln=True, align='C')
     
-    # 2. ŚRODEK: Kod QR (rozmiar w=70, jak w oryginale)
+    # 2. ŚRODEK: Kod QR
     qr = segno.make_qr(qr_code_data)
     img_buffer = io.BytesIO()
     qr.save(img_buffer, kind='png', scale=10, border=2)
     img_buffer.seek(0)
     
-    # Wstawienie kodu QR dokładnie tak, jak miałeś na początku
-    pdf.image(img_buffer, x=15, y=25, w=70)
+    # Pozycja x=15, y=22, szerokość=70 (klasyczny rozmiar)
+    pdf.image(img_buffer, x=15, y=22, w=70)
     
-    # 3. DÓŁ: Dodatkowy napis (bez polskich znaków, aby uniknąć błędu "ę")
-    pdf.set_font("Helvetica", "", 11)
-    # Ustawiamy kursor nisko, by nie nachodził na QR
-    pdf.set_y(90) 
-    pdf.cell(0, 5, txt="Zeskanuj aplikacje", ln=True, align='C')
-    pdf.cell(0, 5, txt="BPme przy realizacji", ln=True, align='C')
+    # 3. DÓŁ: Napis (Zeskanuj aplikacje...)
+    # Przesuwamy kursor na dół, ale tak, by nie wybiło nowej strony (y=92)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_y(88) 
+    
+    line1 = clean_polish_chars("Zeskanuj aplikację")
+    line2 = clean_polish_chars("BPme przy realizacji")
+    
+    pdf.cell(0, 5, txt=line1, ln=True, align='C')
+    pdf.cell(0, 5, txt=line2, ln=True, align='C')
     
     return pdf.output()
 
-# --- Interfejs Aplikacji (bez zmian) ---
+# --- Interfejs Streamlit ---
 st.set_page_config(page_title="Generator QR PDF", page_icon="⛽")
-st.title("Generator Kodów QR do PDF")
+st.title("Generator Kodów QR (1 strona PDF)")
 
-uploaded_file = st.file_uploader("Wybierz plik CSV", type="csv")
+uploaded_file = st.file_uploader("Wgraj plik CSV", type="csv")
 
 if uploaded_file is not None:
     try:
@@ -56,9 +73,9 @@ if uploaded_file is not None:
         df = pd.read_csv(io.StringIO("\n".join(text_content[1:])), header=None)
         kody = df[0].astype(str).tolist()
         
-        st.success(f"Wykryto wartosc: **{label}**")
+        st.success(f"Wykryto: {label}. Przygotowano {len(kody)} kodów.")
 
-        if st.button(f"Generuj {len(kody)} plikow PDF"):
+        if st.button("Generuj PDFy"):
             zip_buffer = io.BytesIO()
             progress_bar = st.progress(0)
 
@@ -66,16 +83,15 @@ if uploaded_file is not None:
                 for i, kod in enumerate(kody):
                     pdf_bytes = generate_pdf(label, kod)
                     zf.writestr(f"{kod}.pdf", pdf_bytes)
-                    
-                    if i % 10 == 0 or i == len(kody) - 1:
+                    if i % 10 == 0:
                         progress_bar.progress((i + 1) / len(kody))
 
             st.download_button(
-                label="📥 Pobierz gotowa paczke ZIP",
+                label="📥 Pobierz paczkę ZIP",
                 data=zip_buffer.getvalue(),
-                file_name=f"kody_qr_{label.replace(' ', '_')}.zip",
+                file_name=f"kody_{label.replace(' ', '_')}.zip",
                 mime="application/zip"
             )
 
     except Exception as e:
-        st.error(f"Wystapil blad: {e}")
+        st.error(f"Błąd: {e}")
