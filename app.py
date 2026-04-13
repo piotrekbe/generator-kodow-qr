@@ -7,7 +7,7 @@ import zipfile
 import re
 import os
 
-# --- KONFIGURACJA PRO ---
+# --- KONFIGURACJA ---
 st.set_page_config(page_title="QR Generator", page_icon="🛡️", layout="centered")
 
 def fix_label_spacing(text):
@@ -53,8 +53,6 @@ st.title("🚀 QR Generator")
 st.markdown("---")
 
 has_fonts = os.path.exists("DejaVuSans.ttf") and os.path.exists("DejaVuSans-Bold.ttf")
-if not has_fonts:
-    st.warning("💡 System działa w trybie uproszczonym (brak czcionek PL).")
 
 uploaded_file = st.file_uploader("Wgraj plik CSV", type="csv")
 
@@ -65,7 +63,6 @@ if uploaded_file:
         if not content: return None, [], False
         
         f_line = content[0].strip()
-        # Sprawdzamy czy pierwsza linia to nagłówek (brak samych cyfr i obecność podkreślnika)
         has_header = not (f_line.isdigit() or "_" not in f_line)
         
         if not has_header:
@@ -87,7 +84,7 @@ if uploaded_file:
     selected_batch = st.selectbox(
         "Wybierz partię:", 
         range(num_batches), 
-        format_func=lambda x: f"Partia {x+1} (Rekordy {x*batch_size + 1} - {min((x+1)*batch_size, total)})"
+        format_func=lambda x: f"Partia {x+1}: rekordy {x*batch_size + 1} - {min((x+1)*batch_size, total)}"
     )
 
     s_idx = selected_batch * batch_size
@@ -101,21 +98,21 @@ if uploaded_file:
     if st.button(f"🔥 Przygotuj Partię {selected_batch + 1}", use_container_width=True):
         zip_buffer = io.BytesIO()
         progress_bar = st.progress(0)
+        status_text = st.empty() # Miejsce na tekst procentowy
         
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
             for i, kod in enumerate(current_batch):
-                # Obliczamy absolutny numer wiersza w pliku CSV
-                # Jeśli jest nagłówek, kody zaczynają się od wiersza 2.
-                # start_i (indeks 0-based) + i + (2 jeśli nagłówek else 1)
+                # Numeracja plików: row_number_KOD.pdf
                 row_number = s_idx + i + (2 if has_header else 1)
                 
                 pdf_data = generate_pdf(label, kod, has_fonts)
-                # Nowy format nazwy: NR_KOD.pdf
-                filename = f"{row_number}_{kod}.pdf"
-                zf.writestr(filename, pdf_data)
+                zf.writestr(f"{row_number}_{kod}.pdf", pdf_data)
                 
-                if i % 50 == 0 or (i + 1) == len(current_batch):
-                    progress_bar.progress((i + 1) / len(current_batch))
+                # Aktualizacja paska i procentów
+                if i % 20 == 0 or (i + 1) == len(current_batch):
+                    p = (i + 1) / len(current_batch)
+                    progress_bar.progress(p)
+                    status_text.text(f"Generowanie: {int(p*100)}%") # Przywrócony tekst procentowy
         
         st.session_state['ready_zip'] = zip_buffer.getvalue()
         st.session_state['last_batch'] = selected_batch + 1
