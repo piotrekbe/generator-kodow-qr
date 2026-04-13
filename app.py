@@ -5,6 +5,7 @@ from fpdf import FPDF
 import io
 import zipfile
 import re
+import os
 
 def fix_label_spacing(text):
     # Wstawia spację między cyfry a litery (np. 50PLN -> 50 PLN)
@@ -14,44 +15,49 @@ def fix_label_spacing(text):
 def generate_pdf(label_text, qr_code_data):
     # Tworzymy PDF 100x100mm
     pdf = FPDF(unit="mm", format=(100, 100))
-    
-    # Blokada automatycznego tworzenia nowej strony
     pdf.set_auto_page_break(False, margin=0)
+    
+    # OBSŁUGA POLSKICH ZNAKÓW:
+    # Zakładamy, że pliki czcionek są w tym samym folderze co app.py
+    # Jeśli nie chcesz wgrywać czcionek, zostawiamy Helvetica, ale bez ogonków.
+    # Poniżej próba wczytania czcionki z obsługą UTF-8:
+    try:
+        # Musisz wgrać te pliki na GitHub!
+        pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
+        pdf.add_font('DejaVu', 'B', 'DejaVuSans-Bold.ttf', uni=True)
+        font_name = 'DejaVu'
+    except:
+        # Jeśli nie znajdzie plików czcionek, wróci do Helvetiki (bez polskich znaków)
+        font_name = 'Helvetica'
+
     pdf.add_page()
     
-    # --- OBLICZENIA DLA WYŚRODKOWANIA W PIONIE ---
-    # Chcemy, aby cała kompozycja była wyśrodkowana.
-    # Ustawiamy sztywne pozycje Y, które sumarycznie dają ładny balans:
-    
-    # 1. GÓRA: Cena (50 PLN)
-    pdf.set_font("Helvetica", "B", 24)
-    pdf.set_y(15) # Zaczynamy na 15mm od góry
+    # 1. GÓRA: Cena
+    pdf.set_font(font_name, 'B', 24)
+    pdf.set_y(15)
     pdf.cell(0, 12, txt=label_text, ln=True, align='C')
     
-    # 2. ŚRODEK: Mniejszy kod QR
+    # 2. ŚRODEK: Kod QR (55mm)
     qr = segno.make_qr(qr_code_data)
     img_buffer = io.BytesIO()
     qr.save(img_buffer, kind='png', scale=10, border=2)
     img_buffer.seek(0)
-    
-    # Zmniejszamy szerokość z 70 na 55 mm
-    # Pozycja x=22.5 wyśrodkowuje obrazek 55mm na stronie 100mm ( (100-55)/2 )
-    # Pozycja y=28 daje odstęp od ceny
     pdf.image(img_buffer, x=22.5, y=28, w=55)
     
-    # 3. DÓŁ: Napis z większym odstępem
-    pdf.set_font("Helvetica", "", 10)
-    
-    # Przesunięcie napisu niżej (y=86), aby zwiększyć odstęp od kodu QR
+    # 3. DÓŁ: Napis z polskimi znakami
+    pdf.set_font(font_name, '', 10)
     pdf.set_y(86) 
     
-    # Używamy wersji bez polskich znaków dla pełnego bezpieczeństwa przy dużej skali
-    pdf.cell(0, 5, txt="Zeskanuj aplikację", ln=True, align='C')
-    pdf.cell(0, 5, txt="BPme przy realizacji", ln=True, align='C')
+    # Tekst z polskimi znakami
+    line1 = "Zeskanuj aplikację"
+    line2 = "BPme przy realizacji"
+    
+    pdf.cell(0, 5, txt=line1, ln=True, align='C')
+    pdf.cell(0, 5, txt=line2, ln=True, align='C')
     
     return pdf.output()
 
-# --- Oryginalna logika aplikacji (bez zmian) ---
+# --- Oryginalna logika aplikacji ---
 st.title("Generator QR PDF")
 
 uploaded_file = st.file_uploader("Wybierz plik CSV", type="csv")
